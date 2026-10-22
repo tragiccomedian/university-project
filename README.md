@@ -1,6 +1,5 @@
 # TaskFlow 🚀
 
-[![CI](https://github.com/your-org/taskflow/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/taskflow/actions)
 ![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)
 ![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-336791.svg)
@@ -142,4 +141,3 @@ make test-cov
 - [Контракт REST API для Frontend-команды](API_CONTRACT.md)
 - [OpenAPI 3.1 спецификация (JSON)](openapi.json)
 - [Дизайн и проектирование системы (Этап 0)](/home/opium/.gemini/antigravity-cli/brain/16863016-0103-4821-a1ef-34c97bbfcabf/STAGE_0_DESIGN.md)
-
