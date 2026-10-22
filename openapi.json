@@ -1,0 +1,308 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "TaskFlow",
+    "description": "Multi-user task tracker with timelines, habits, notes, time tracking and real-time notifications.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health/live": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Liveness probe",
+        "description": "Returns 200 if the application process is running.",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Readiness probe",
+        "description": "Returns 200 when both PostgreSQL and Redis are reachable.",
+        "responses": {
+          "200": {
+            "description": "Services are healthy",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          },
+          "503": {
+            "description": "Services are degraded",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Register a new user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "username", "password", "display_name"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "username": { "type": "string", "minLength": 3, "maxLength": 50 },
+                  "password": { "type": "string", "minLength": 8, "maxLength": 128 },
+                  "display_name": { "type": "string", "minLength": 1, "maxLength": 100 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "User created and access tokens issued" },
+          "409": { "description": "Email or username already taken" },
+          "422": { "description": "Validation error" }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Login and obtain token pair",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string" },
+                  "device_name": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Login successful" },
+          "401": { "description": "Invalid email or password" }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Refresh access token using an opaque refresh token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["refresh_token"],
+                "properties": { "refresh_token": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Token rotated successfully" },
+          "401": { "description": "Token expired or revoked" }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Logout from the current device",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": { "204": { "description": "Successfully logged out" } }
+      }
+    },
+    "/api/v1/auth/sessions": {
+      "delete": {
+        "tags": ["auth"],
+        "summary": "Logout from ALL devices",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": { "204": { "description": "All sessions revoked" } }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": ["auth"],
+        "summary": "Get current user profile",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": { "200": { "description": "User profile data" } }
+      }
+    },
+    "/api/v1/workspaces": {
+      "get": {
+        "tags": ["workspaces"],
+        "summary": "List my workspaces",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": { "200": { "description": "List of user workspaces" } }
+      },
+      "post": {
+        "tags": ["workspaces"],
+        "summary": "Create a new workspace",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": { "201": { "description": "Workspace created" }, "409": { "description": "Slug conflict" } }
+      }
+    },
+    "/api/v1/workspaces/{ws_id}": {
+      "get": {
+        "tags": ["workspaces"],
+        "summary": "Get workspace details",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": { "200": { "description": "Workspace details" }, "404": { "description": "Workspace not found" } }
+      },
+      "patch": {
+        "tags": ["workspaces"],
+        "summary": "Update workspace details (Admin or Owner)",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": { "200": { "description": "Workspace updated" }, "403": { "description": "Insufficient permissions" } }
+      },
+      "delete": {
+        "tags": ["workspaces"],
+        "summary": "Delete workspace (Owner only)",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": { "204": { "description": "Workspace soft deleted" } }
+      }
+    },
+    "/api/v1/workspaces/{ws_id}/members": {
+      "get": {
+        "tags": ["workspaces"],
+        "summary": "List workspace members",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": { "200": { "description": "List of members" } }
+      },
+      "post": {
+        "tags": ["workspaces"],
+        "summary": "Invite or add a member (Admin or Owner)",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": { "201": { "description": "Member added" }, "409": { "description": "Member already exists" } }
+      }
+    },
+    "/api/v1/workspaces/{ws_id}/projects": {
+      "get": {
+        "tags": ["projects"],
+        "summary": "List projects in workspace",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": { "200": { "description": "List of projects" } }
+      },
+      "post": {
+        "tags": ["projects"],
+        "summary": "Create a project (Member+)",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": { "201": { "description": "Project created" } }
+      }
+    },
+    "/api/v1/workspaces/{ws_id}/tasks": {
+      "get": {
+        "tags": ["tasks"],
+        "summary": "List tasks with filters and search",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": { "200": { "description": "Paginated list of tasks" } }
+      },
+      "post": {
+        "tags": ["tasks"],
+        "summary": "Create a new task (Member+)",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": { "201": { "description": "Task created" }, "422": { "description": "Invalid assignee or dates" } }
+      }
+    },
+    "/api/v1/workspaces/{ws_id}/tasks/{task_id}": {
+      "get": {
+        "tags": ["tasks"],
+        "summary": "Get task details and subtasks",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": { "200": { "description": "Task details" } }
+      },
+      "patch": {
+        "tags": ["tasks"],
+        "summary": "Update task with optimistic locking (requires version)",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": {
+          "200": { "description": "Task updated" },
+          "409": { "description": "VERSION_CONFLICT: task modified concurrently" },
+          "422": { "description": "CYCLIC_DEPENDENCY or validation error" }
+        }
+      },
+      "delete": {
+        "tags": ["tasks"],
+        "summary": "Delete task (Member+)",
+        "security": [{ "OAuth2PasswordBearer": [] }],
+        "responses": { "204": { "description": "Task deleted" } }
+      }
+    },
+    "/api/v1/workspaces/{ws_id}/tasks/{task_id}/comments": {
+      "get": { "tags": ["comments"], "summary": "List task comments", "responses": { "200": { "description": "Comments list" } } },
+      "post": { "tags": ["comments"], "summary": "Add a comment with optional @mentions", "responses": { "201": { "description": "Comment created" } } }
+    },
+    "/api/v1/workspaces/{ws_id}/projects/{proj_id}/timeline": {
+      "get": { "tags": ["milestones & timeline"], "summary": "Get project timeline (Gantt chart data)", "responses": { "200": { "description": "Timeline data" } } }
+    },
+    "/api/v1/workspaces/{ws_id}/tasks/{task_id}/time-entries/start": {
+      "post": {
+        "tags": ["time tracking"],
+        "summary": "Start timer for task",
+        "responses": {
+          "201": { "description": "Timer started" },
+          "409": { "description": "TIMER_ALREADY_RUNNING: user already has an active timer" }
+        }
+      }
+    },
+    "/api/v1/time-entries/stop": {
+      "post": { "tags": ["time tracking"], "summary": "Stop active running timer", "responses": { "200": { "description": "Timer stopped" }, "404": { "description": "No active timer found" } } }
+    },
+    "/api/v1/time-entries": {
+      "get": { "tags": ["time tracking"], "summary": "List logged time entries for current user", "responses": { "200": { "description": "Time entries" } } },
+      "post": { "tags": ["time tracking"], "summary": "Log time manually", "responses": { "201": { "description": "Time entry created" } } }
+    },
+    "/api/v1/habits": {
+      "get": { "tags": ["habits"], "summary": "List my habits", "responses": { "200": { "description": "Habit list" } } },
+      "post": { "tags": ["habits"], "summary": "Create a new habit", "responses": { "201": { "description": "Habit created" } } }
+    },
+    "/api/v1/habits/{habit_id}/checkins": {
+      "post": {
+        "tags": ["habits"],
+        "summary": "Record daily checkin",
+        "responses": {
+          "201": { "description": "Checkin recorded" },
+          "409": { "description": "Already checked in for this date" }
+        }
+      }
+    },
+    "/api/v1/habits/{habit_id}/stats": {
+      "get": { "tags": ["habits"], "summary": "Get habit streak and 30-day stats", "responses": { "200": { "description": "Habit statistics" } } }
+    },
+    "/api/v1/notes": {
+      "get": { "tags": ["notes"], "summary": "List personal and workspace notes", "responses": { "200": { "description": "Notes list" } } },
+      "post": { "tags": ["notes"], "summary": "Create a note", "responses": { "201": { "description": "Note created" } } }
+    },
+    "/api/v1/attachments": {
+      "post": { "tags": ["attachments"], "summary": "Upload an attachment file (max 10MB)", "responses": { "201": { "description": "File uploaded" } } }
+    },
+    "/api/v1/search": {
+      "get": { "tags": ["search"], "summary": "Global full-text search across accessible tasks and notes", "responses": { "200": { "description": "Search results" } } }
+    },
+    "/api/v1/notifications": {
+      "get": { "tags": ["notifications"], "summary": "List my notifications", "responses": { "200": { "description": "Notification list" } } }
+    },
+    "/api/v1/notifications/{n_id}/read": {
+      "patch": { "tags": ["notifications"], "summary": "Mark notification as read", "responses": { "200": { "description": "Notification marked read" } } }
+    },
+    "/api/v1/notifications/settings": {
+      "get": { "tags": ["notifications"], "summary": "Get notification channel preferences", "responses": { "200": { "description": "Settings list" } } },
+      "put": { "tags": ["notifications"], "summary": "Update channel preference (in_app/email/telegram)", "responses": { "200": { "description": "Setting updated" } } }
+    },
+    "/api/v1/ws/notifications": {
+      "get": {
+        "tags": ["real-time notifications"],
+        "summary": "WebSocket push stream for notifications (requires ?token=<jwt>)",
+        "responses": { "101": { "description": "Switching Protocols to WebSocket" } }
+      }
+    }
+  }
+}
