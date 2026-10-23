@@ -2,9 +2,12 @@
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -64,6 +67,25 @@ def create_app() -> FastAPI:
 
     # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(api_router)
+
+    # ── Static Files & Frontend ───────────────────────────────────────────────
+    static_dir = Path(__file__).resolve().parent.parent / "static"
+    if not static_dir.exists():
+        static_dir = Path(__file__).resolve().parent / "static"
+
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+        @app.get("/", include_in_schema=False)
+        async def serve_index() -> FileResponse:
+            return FileResponse(static_dir / "index.html")
+
+        @app.get("/favicon.ico", include_in_schema=False)
+        async def serve_favicon() -> FileResponse:
+            fav = static_dir / "favicon.svg"
+            if fav.exists():
+                return FileResponse(fav, media_type="image/svg+xml")
+            return FileResponse(static_dir / "index.html")
 
     return app
 
