@@ -156,7 +156,8 @@ def upgrade() -> None:
             RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
-
+    """)
+    op.execute("""
         CREATE TRIGGER tasks_tsvector_update
         BEFORE INSERT OR UPDATE OF title, description ON tasks
         FOR EACH ROW EXECUTE FUNCTION tasks_search_vector_update();
@@ -181,6 +182,7 @@ def upgrade() -> None:
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("ix_comments_task_id", "comments", ["task_id"])
+    op.create_index("ix_comments_author_id", "comments", ["author_id"])
 
     # ── milestones ────────────────────────────────────────────────────────────
     op.create_table(
@@ -287,7 +289,8 @@ def upgrade() -> None:
             RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
-
+    """)
+    op.execute("""
         CREATE TRIGGER notes_tsvector_update
         BEFORE INSERT OR UPDATE OF title, content ON notes
         FOR EACH ROW EXECUTE FUNCTION notes_search_vector_update();
@@ -307,6 +310,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
     )
+    op.create_index("ix_attachments_uploader_id", "attachments", ["uploader_id"])
     op.create_index("ix_attachments_task_id", "attachments", ["task_id"])
     op.create_index("ix_attachments_note_id", "attachments", ["note_id"])
 
@@ -359,7 +363,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
     )
     op.create_index("ix_activity_log_entity", "activity_log", ["entity_type", "entity_id"])
-    op.create_index("ix_activity_log_workspace_id", "activity_log", ["workspace_id"])
+    op.create_index("ix_activity_log_workspace", "activity_log", ["workspace_id"])
     op.create_index("ix_activity_log_actor_id", "activity_log", ["actor_id"])
 
 
